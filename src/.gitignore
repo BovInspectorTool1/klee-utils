@@ -1,0 +1,5 @@
+*.txt
+gen-ktest
+ktest-tool
+*.ktest
+
