@@ -34,13 +34,9 @@ static void push_int(KTest *b, const char *name, int val) {
   o->bytes = (unsigned char *)malloc(4);
 	//FIXME: the bytes are not displayed correctly in ktest-tool for value > 40
 	o->bytes[0] = val & 0xFF;
-	std::cout << "First byte is " << (o->bytes[0]) << std::endl;
 	o->bytes[1] = (val >> 8) & 0xFF;
-	std::cout << "Second byte is " << (o->bytes[1]) << std::endl;
   o->bytes[2] = (val >> 16) & 0xFF;
-	std::cout << "Third byte is " << (o->bytes[2]) << std::endl;
   o->bytes[3] = (val >> 24) & 0xFF;
-	std::cout << "Fourth byte is " << (o->bytes[3]) << std::endl;
 }
 
 static void push_obj(KTest *b, const char *name, unsigned non_zero_bytes, 
