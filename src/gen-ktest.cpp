@@ -71,10 +71,10 @@ static void gen_from_vars(KTest *b, const char *input_file){
   }
 }
 
-/*
-Use this option if the input file is symbolic
-*/
-static void gen_from_file(KTest *b, const char *input_file){
+/// Use this option if the input file is symbolic
+/// input_file: the file storing the content of the file
+/// file_name: the name of the symbolic input
+static void gen_from_file(KTest *b, const char* file_name, const char *input_file){
  	std::ifstream inFile; 
 	size_t size = 0;
 	inFile.open(input_file, std::ios::in|std::ios::binary|std::ios::ate);
@@ -87,17 +87,21 @@ static void gen_from_file(KTest *b, const char *input_file){
 
 		KTestObject *o = &b->objects[b->numObjects++];
 	  assert(b->numObjects < MAX);
-	  o->name = strdup("file");
+	  
+	  std::string s = std::string(file_name) + std::string("-data");
+	  o->name = strdup(s.c_str());
 	  o->numBytes = size + 1;
-	  o->bytes = (unsigned char *)malloc(size + 1);
+	  o->bytes = (unsigned char *)malloc(size);
 
 		// FIXME: is it a good type cast?
 		inFile.read((char*)o->bytes, size);
 
 		// Does it need to be terminated by '\0'
-		o->bytes[size] = '\0';
+		// o->bytes[size] = '\0';
 		// FIXME: Not sure if this is necessary? but KLEE used in generating random seed
-		push_obj(b, "file-stat", sizeof(struct stat64), sizeof(struct stat64));
+		s = s + std::string("-stat");
+		push_obj(b, s.c_str(), sizeof(struct stat64), sizeof(struct stat64));
+		push_int(b, "model-version", 1);
 	}
 }
 
@@ -117,15 +121,18 @@ int main(int argc, char *argv[]) {
   b.numObjects = 0;
   b.objects = (KTestObject *)malloc(MAX * sizeof *b.objects);
   
-	if(strcmp(argv[1],"--sym-vars") == 0){
+  int index = 0;
+  if(strcmp(argv[1],"--sym-vars") == 0){
 		gen_from_vars(&b, argv[2]);		
+		index = 3;
 	} else if(strcmp(argv[1], "--sym-file") == 0){
-		gen_from_file(&b, argv[2]);
+		gen_from_file(&b, argv[2], argv[3]);
+		index = 4;
 	} else{
     fprintf(stderr, "Unexpected option: <%s>\n", argv[1]);
 	}
 
-  if (!kTest_toFile(&b, argv[3]))
+  if (!kTest_toFile(&b, argv[index]))
     assert(0);	
 
   return 0;
