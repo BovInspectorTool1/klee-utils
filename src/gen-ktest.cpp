@@ -56,10 +56,8 @@ static void push_obj(KTest *b, const char *name, unsigned non_zero_bytes,
     o->bytes[i] = 0;
 }
 
-/*
-User this option if the symbolic variables are of interger type, created using
-the API klee_make_symbolic
-*/
+/// User this option if the symbolic variables are of interger type, 
+/// created using the API klee_make_symbolic
 static void gen_from_vars(KTest *b, const char *input_file){
   char sym_var[MAX_SIZE];
   int val;
@@ -90,7 +88,7 @@ static void gen_from_file(KTest *b, const char* file_name, const char *input_fil
 	  
 	  std::string s = std::string(file_name) + std::string("-data");
 	  o->name = strdup(s.c_str());
-	  o->numBytes = size + 1;
+	  o->numBytes = size;
 	  o->bytes = (unsigned char *)malloc(size);
 
 		// FIXME: is it a good type cast?
