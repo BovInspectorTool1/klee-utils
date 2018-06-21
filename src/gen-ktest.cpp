@@ -33,8 +33,8 @@ static void push_int(KTest *b, const char *name, int val) {
   o->numBytes = 4;
   o->bytes = (unsigned char *)malloc(4);
 	//FIXME: the bytes are not displayed correctly in ktest-tool for value > 40
-	o->bytes[0] = val & 0xFF;
-	o->bytes[1] = (val >> 8) & 0xFF;
+  o->bytes[0] = val & 0xFF;
+  o->bytes[1] = (val >> 8) & 0xFF;
   o->bytes[2] = (val >> 16) & 0xFF;
   o->bytes[3] = (val >> 24) & 0xFF;
 }
