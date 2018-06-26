@@ -75,17 +75,35 @@ int main(int argc, char *argv[]) {
   
   // read numObjects to iterate
   int numObjects = read_uint32(&fs);
+  unsigned int size;
   for (i=0; i< numObjects; i++) {
     std::string name = read_string(&fs);
-    std::cout << std::endl << "name = " << name << std::endl << std::flush;
-    unsigned int size = read_uint32(&fs);
-    std::cout << std::endl << "size = " << size << std::endl << std::flush;
-    /*
+    //*
+    if (name.find("-data") == std::string::npos){
+      size = read_uint32(&fs);
+      fs.seekg(size, std::ios_base::cur);
+      continue;
+    }
+    //*/
+    std::cout << std::endl << "name = " << name << std::endl;
+    size = read_uint32(&fs);
+    std::cout << std::endl << "size = " << size << std::endl;
     char data[size+1];
     fs.read(data, size);
-    data[len] = '\0';
-    std::cout << std::endl << "data = " << std::hex << data << std::endl << std::flush;
-    //*/
-    fs.seekg(size, std::ios_base::cur);
+    data[size] = '\0';
+    std::ofstream ofs(argv[2], std::ios::binary);
+    ofs.write(data, size);
+    ofs.close();
+    std::cout << std::endl << "data = '" << std::flush;
+    /*
+    for (const char* p = data; *p; ++p)
+    {
+        printf("%04x", *p);
+    }
+    /*/
+    std::cout << data << "'" << std::endl << std::flush;
+    break;
   }
+  
+  fs.close();
 }
