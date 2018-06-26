@@ -17,52 +17,28 @@
 
 #include "KTest.h"
 
+#define KTEST_MAGIC_SIZE 5
+
 #if defined(__FreeBSD__) || defined(__minix)
 #define stat64 stat
 #endif
 
-static int read_uint32(FILE *f, unsigned *value_out) {
+/// The PC is little indian
+/// ktest file stores integers in big indian 
+static unsigned int read_uint32(std::fstream *f){
   unsigned char data[4];
-  if (fread(data, 4, 1, f)!=1)
-    return 0;
-  *value_out = (((((data[0]<<8) + data[1])<<8) + data[2])<<8) + data[3];
-  return 1;
+  f->read(reinterpret_cast<char*>(data), 4);
+  return (((((data[0]<<8) + data[1])<<8) + data[2])<<8) + data[3];
 }
 
-static int read_string(FILE *f, char **value_out) {
-  unsigned len;
-  if (!read_uint32(f, &len))
-    return 0;
-  *value_out = (char*) malloc(len+1);
-  if (!*value_out)
-    return 0;
-  if (fread(*value_out, len, 1, f)!=1)
-    return 0;
-  (*value_out)[len] = 0;
-  return 1;
-}
-
-static void free_memory(KTest* res){
-    unsigned i;
-//  if (res) {
-    if (res->args) {
-      for (i=0; i<res->numArgs; i++)
-        if (res->args[i])
-          free(res->args[i]);
-      free(res->args);
-    }
-    if (res->objects) {
-      for (i=0; i<res->numObjects; i++) {
-        KTestObject *bo = &res->objects[i];
-        if (bo->name)
-          free(bo->name);
-        if (bo->bytes)
-          free(bo->bytes);
-      }
-      free(res->objects);
-    }
-    free(res);
-//  }
+/// The PC is little indian
+/// ktest file stores integers in big indian 
+static std::string read_string(std::fstream *f){
+  unsigned int len = read_uint32(f);
+  char data[len+1];
+  f->read(data, len);
+  data[len] = '\0';
+  return std::string(data);
 }
 
 int main(int argc, char *argv[]) {
@@ -71,67 +47,45 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
   
-  FILE *f = fopen(argv[1], "rb");
-  KTest *res = 0;
-  unsigned i, version;
-
-  if (!f) 
-    goto error;
-
-  res = (KTest*) calloc(1, sizeof(*res));
-  if (!res) 
-    goto error;
-
-  if (!read_uint32(f, &version)) 
-    goto error;
+  std::fstream fs(argv[1], std::ios_base::in | std::ios_base::binary);
   
-  if (version > kTest_getCurrentVersion())
-    goto error;
-
-  res->version = version;
-
-  if (!read_uint32(f, &res->numArgs)) 
-    goto error;
-  res->args = (char**) calloc(res->numArgs, sizeof(*res->args));
-  if (!res->args) 
-    goto error;
+  // skip string type: KTEST or BOUT, both have 5 characters
+  fs.seekg (KTEST_MAGIC_SIZE, std::ios_base::beg);
   
-  for (i=0; i<res->numArgs; i++)
-    if (!read_string(f, &res->args[i]))
-      goto error;
-
-  if (version >= 2) {
-    if (!read_uint32(f, &res->symArgvs)) 
-      goto error;
-    if (!read_uint32(f, &res->symArgvLen)) 
-      goto error;
+  // don't care about version, skip 4 bytes
+  fs.seekg (4, std::ios_base::cur);
+  
+  // read number of arguments
+  int numArgs = read_uint32(&fs);
+  
+  // skip all the arguments
+  int i, len;
+  for(i = 0; i < numArgs; ++i){
+    // each string starts with its length. See function "kTest_toFile" in KTest.cpp
+    len = read_uint32(&fs);
+    // skip that string
+    fs.seekg(len, std::ios_base::cur);
   }
-
-  if (!read_uint32(f, &res->numObjects))
-    goto error;
-  res->objects = (KTestObject*) calloc(res->numObjects, sizeof(*res->objects));
-  if (!res->objects)
-    goto error;
-  for (i=0; i<res->numObjects; i++) {
-    KTestObject *o = &res->objects[i];
-    if (!read_string(f, &o->name))
-      goto error;
-    std::cout << std::endl << o->name << std::endl << std::flush;
-    if (!read_uint32(f, &o->numBytes))
-      goto error;
-    o->bytes = (unsigned char*) malloc(o->numBytes);
-    if (fread(o->bytes, o->numBytes, 1, f)!=1)
-      goto error;
+  
+  // skip symArgvs
+  fs.seekg(4, std::ios_base::cur);
+  
+  // skip symArgvLen
+  fs.seekg(4, std::ios_base::cur);
+  
+  // read numObjects to iterate
+  int numObjects = read_uint32(&fs);
+  for (i=0; i< numObjects; i++) {
+    std::string name = read_string(&fs);
+    std::cout << std::endl << "name = " << name << std::endl << std::flush;
+    unsigned int size = read_uint32(&fs);
+    std::cout << std::endl << "size = " << size << std::endl << std::flush;
+    /*
+    char data[size+1];
+    fs.read(data, size);
+    data[len] = '\0';
+    std::cout << std::endl << "data = " << std::hex << data << std::endl << std::flush;
+    //*/
+    fs.seekg(size, std::ios_base::cur);
   }
-
-  free_memory(res);
-  fclose(f);
-
-  exit(0);
- error:
-  std::cout << std::endl << "Error parsing ktest file..." << std::endl << std::flush;
-  if (f) free_memory(res);
-  if (f) fclose(f);
-
-  exit(1);
 }
